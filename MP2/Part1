@@ -1,0 +1,172 @@
+from queue import PriorityQueue
+import cProfile as cp
+import time
+import random as r
+
+class Variable(object):
+	"""docstring for Variable"""
+	def __init__(self, point, values, pickedValue = '_', heur = r.random()):
+		#r.random()
+		super(Variable, self).__init__()
+		self.point = point
+		self.values = values
+		self.pickedValue = pickedValue
+		self.heur = heur
+
+	def __str__(self):
+		return f"{self.point}, values: {self.values}, picked: {self.pickedValue}"
+
+	def __lt__(self, other):
+		return self.heur < other.heur
+		
+class State(object):
+	"""docstring for State"""
+	def __init__(self, assignedVars, unassignedVars):
+		super(State, self).__init__()
+		self.assignedVars = assignedVars
+		self.unassignedVars = unassignedVars
+
+	# def __str__(self):
+	# 	assigned = ""
+	# 	unassigned = ""
+	# 	for var in self.assignedVars:
+	# 		assigned += str(var)
+	# 	for var in self.unassignedVars:
+	# 		unassigned += str(var)
+	# 	return f"{assigned}, {unassigned}"
+		
+
+def readInput(fileName):
+	with open(fileName) as f:
+		content = [x.strip() for x in f.readlines()]
+		content = [[content[y][x] for x in range(len(content[0]))] for y in range(len(content))]
+		return content
+
+def buildInitialState(puzzle):
+	domain = set()
+	assignedVars = {}
+	unassignedVars = PriorityQueue()
+	test = 0
+	for x in range(0, len(puzzle)):
+		line = puzzle[x]
+		for y in range(0, len(line)):
+			char = puzzle[x][y]
+			test += 1
+			if char != '_':
+				domain.add(char)
+				assignedVars[(x,y)] = Variable((x,y), None, char, test)
+			else:
+				unassignedVars.put(Variable((x,y), None, '_', test))
+	return (State(assignedVars, unassignedVars), domain)
+
+def printSol(state, puzzle, totalTime, explored):
+	for var in state.assignedVars.values():
+		(x,y) = var.point
+		puzzle[x][y] = var.pickedValue
+	printMap(puzzle)
+	print(f"Took {totalTime}s and attempted assignment {explored}")
+	return puzzle
+
+def printMap(maze):
+	for line in maze:
+		print(''.join(line))
+
+def isStateComplete(state):
+	return state.unassignedVars.empty()
+
+def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth):
+	(x,y) = point
+	# Would only see this from canAssign, and can assign an edge piece so return true
+	if x < 0 or y < 0 or x == puzzleWidth or y == puzzleLength:
+		return True
+	nextPoints = [(x+1,y), (x,y+1), (x-1,y), (x, y-1)]
+	numSame = 0
+	numAssignedNeigh = 0
+	for nextPoint in nextPoints:
+		(x1, y1) = nextPoint
+		if x1 < 0 or y1 < 0 or x1 == puzzleWidth or y1 == puzzleLength:
+			numAssignedNeigh += 1
+		elif nextPoint in state.assignedVars:
+			numAssignedNeigh += 1
+
+			var = state.assignedVars[nextPoint]
+			if state.assignedVars[nextPoint].pickedValue == color:
+				numSame += 1
+
+	if numSame > 2:
+		# print(f"numSame: {numSame} point: {point} color {color}")
+		return False
+	# Early termination case
+	elif numAssignedNeigh == 3:
+		# print(f"point: {point} color {color} numAssignedNeigh: {numAssignedNeigh}, {numSame}")
+		return numSame > 0 if point not in ends else True
+	elif numAssignedNeigh == 4:
+		# print(f"point: {point} color {color} numAssignedNeigh: {numAssignedNeigh}, {numSame}")
+		return numSame == 2 if point not in ends else numSame == 1
+	else:
+		return True
+
+def canAssign(state, var, color, ends, puzzleLength, puzzleWidth):
+	(x,y) = var.point
+	points = [var.point, (x+1,y), (x,y+1), (x-1,y), (x, y-1)]
+	for point in points:
+		# print(point)
+		if point in state.assignedVars:
+			color = state.assignedVars[point].pickedValue
+			pointConsistent = isConsistent(state, point, color, ends, puzzleLength, puzzleWidth)
+			if not pointConsistent:
+				# print(f"{point} was determiend to be inconsistent")
+				return False
+	return True
+
+def csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
+	
+	if isStateComplete(state):
+		return (state, acc)
+	var = state.unassignedVars.get()
+	for color in domain:
+		var.pickedValue = color
+		state.assignedVars[var.point] = var
+		# print("\n")
+		# printSol(state, puzzle)
+		# time.sleep(1)
+		acc += 1
+		if canAssign(state, var, color, ends, puzzleLength, puzzleWidth):
+
+			(result, acc) = csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc)
+			if result != None:
+				return (result, acc)
+		state.assignedVars.pop(var.point)
+		var.pickedValue = '_'
+	state.unassignedVars.put(var)
+	return (None, acc)
+
+def buildSolName(puzzle):
+	return f"sol{puzzle}"
+if __name__ == "__main__":
+	fileNames = [
+	# 'input55.txt',
+	# 'input77.txt',
+	# 'input88.txt',
+	# 'input991.txt',
+	'input10101.txt',
+	'input10102.txt'
+	]
+	sols = []
+	for puzzle in fileNames:
+		print(puzzle)
+		puzzle = readInput(puzzle)
+
+		(initState, domain) = buildInitialState(puzzle)
+		ends = initState.assignedVars.copy()
+		startTime = time.clock()
+		(finalState, acc) = csp(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
+		totalTime = time.clock() - startTime
+		sols.append(printSol(initState, puzzle, totalTime, acc))
+
+	# # Check solutions
+	# for x in range(0, len(fileNames)):
+	# 	fileName = fileNames[x]
+	# 	sol = readInput(buildSolName(fileName))
+	# 	assert(sol == sols[x])
+
