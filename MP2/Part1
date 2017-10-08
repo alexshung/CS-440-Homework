@@ -5,7 +5,7 @@ import random as r
 
 class Variable(object):
 	"""docstring for Variable"""
-	def __init__(self, point, values, pickedValue = '_', heur = r.random()):
+	def __init__(self, point, values, pickedValue = '_', heur = 0):
 		#r.random()
 		super(Variable, self).__init__()
 		self.point = point
@@ -17,14 +17,17 @@ class Variable(object):
 		return f"{self.point}, values: {self.values}, picked: {self.pickedValue}"
 
 	def __lt__(self, other):
+		if self.heur == other.heur:
+			return self.point[0] + self.point[1] < other.point[0] + other.point[1]
 		return self.heur < other.heur
 		
-class State(object):
+class State(object): # This is the assignment
 	"""docstring for State"""
-	def __init__(self, assignedVars, unassignedVars):
+	def __init__(self, assignedVars, unassignedVars, varsMap):
 		super(State, self).__init__()
 		self.assignedVars = assignedVars
 		self.unassignedVars = unassignedVars
+		self.varsMap = varsMap
 
 	# def __str__(self):
 	# 	assigned = ""
@@ -46,6 +49,7 @@ def buildInitialState(puzzle):
 	domain = set()
 	assignedVars = {}
 	unassignedVars = PriorityQueue()
+	varsMap = {}
 	test = 0
 	for x in range(0, len(puzzle)):
 		line = puzzle[x]
@@ -54,10 +58,14 @@ def buildInitialState(puzzle):
 			test += 1
 			if char != '_':
 				domain.add(char)
-				assignedVars[(x,y)] = Variable((x,y), None, char, test)
+				varA = Variable((x,y), None, char, test)
+				assignedVars[(x,y)] = varA
+				# varsMap[varA.point] = varA
 			else:
-				unassignedVars.put(Variable((x,y), None, '_', test))
-	return (State(assignedVars, unassignedVars), domain)
+				varA = Variable((x,y), None, '_', test)
+				unassignedVars.put(varA)
+				varsMap[varA.point] = varA
+	return (State(assignedVars, unassignedVars, varsMap), domain)
 
 def printSol(state, puzzle, totalTime, explored):
 	for var in state.assignedVars.values():
@@ -67,6 +75,17 @@ def printSol(state, puzzle, totalTime, explored):
 	print(f"Took {totalTime}s and attempted assignment {explored}")
 	return puzzle
 
+def printDebug(state, puzzle):
+	# for var in state.assignedVars.values():
+		# (x,y) = var.point
+	for x in range(len(puzzle)):
+		for y in range(len(puzzle[x])):
+			if (x, y) in state.assignedVars:
+				puzzle[x][y] = state.assignedVars[(x,y)].pickedValue
+			else:
+				puzzle[x][y] = '_'
+	printMap(puzzle)
+
 def printMap(maze):
 	for line in maze:
 		print(''.join(line))
@@ -74,12 +93,15 @@ def printMap(maze):
 def isStateComplete(state):
 	return state.unassignedVars.empty()
 
-def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth):
+def makeNextPoints(x,y):
+	return [(x+1,y), (x,y+1), (x-1,y), (x, y-1)]
+
+def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth, domain):
 	(x,y) = point
 	# Would only see this from canAssign, and can assign an edge piece so return true
 	if x < 0 or y < 0 or x == puzzleWidth or y == puzzleLength:
 		return True
-	nextPoints = [(x+1,y), (x,y+1), (x-1,y), (x, y-1)]
+	nextPoints = makeNextPoints(x,y)
 	numSame = 0
 	numAssignedNeigh = 0
 	for nextPoint in nextPoints:
@@ -90,7 +112,11 @@ def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth):
 			numAssignedNeigh += 1
 
 			var = state.assignedVars[nextPoint]
-			if state.assignedVars[nextPoint].pickedValue == color:
+			values = var.values if var.values != None else domain
+			if var.pickedValue != "_":
+				if var.pickedValue == color:
+					numSame += 1
+			elif color in var.values:
 				numSame += 1
 
 	if numSame > 2:
@@ -106,20 +132,19 @@ def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth):
 	else:
 		return True
 
-def canAssign(state, var, color, ends, puzzleLength, puzzleWidth):
+def canAssign(state, var, color, ends, puzzleLength, puzzleWidth, domain):
 	(x,y) = var.point
-	points = [var.point, (x+1,y), (x,y+1), (x-1,y), (x, y-1)]
+	points = [var.point] + makeNextPoints(x,y)
 	for point in points:
-		# print(point)
-		if point in state.assignedVars:
-			color = state.assignedVars[point].pickedValue
-			pointConsistent = isConsistent(state, point, color, ends, puzzleLength, puzzleWidth)
+		spaceColor = state.assignedVars[point].pickedValue if point in state.assignedVars else color
+		if point in state.assignedVars or point == var.point:
+			pointConsistent = isConsistent(state, point, spaceColor, ends, puzzleLength, puzzleWidth, domain)
 			if not pointConsistent:
 				# print(f"{point} was determiend to be inconsistent")
 				return False
 	return True
 
-def csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
+def cspRandom(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 	
 	if isStateComplete(state):
 		return (state, acc)
@@ -128,12 +153,12 @@ def csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 		var.pickedValue = color
 		state.assignedVars[var.point] = var
 		# print("\n")
-		# printSol(state, puzzle)
+		# printDebug(state, puzzle)
 		# time.sleep(1)
 		acc += 1
-		if canAssign(state, var, color, ends, puzzleLength, puzzleWidth):
+		if canAssign(state, var, color, ends, puzzleLength, puzzleWidth, domain):
 
-			(result, acc) = csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc)
+			(result, acc) = cspRandom(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc)
 			if result != None:
 				return (result, acc)
 		state.assignedVars.pop(var.point)
@@ -143,14 +168,108 @@ def csp(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 
 def buildSolName(puzzle):
 	return f"sol{puzzle}"
+
+def cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
+	if isStateComplete(state):
+		return (state, acc)
+
+	# if updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
+	if updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
+
+		var = state.unassignedVars.get()
+		varDomain = var.values
+		print(f"point {var.point}:{varDomain}")
+		for color in varDomain:
+			var.pickedValue = color
+			state.assignedVars[var.point] = var
+
+
+			printDebug(state, puzzle)
+			print("\n")
+			time.sleep(1)
+
+			acc += 1
+			(result, acc) = cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc)
+			if result != None:
+				return (result, acc)
+			state.assignedVars.pop(var.point)
+			var.pickedValue = '_'
+		var.values = domain
+		state.unassignedVars.put(var)
+	return (None, acc)
+
+def updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
+	varsHolder = [var]
+	while varsHolder:
+		nextVar = varsHolder.pop()
+		print(nextVar)
+		origValue = nextVar.values
+		varDomain = nextVar.values if nextVar.values != None else domain
+		possibleValues = set()
+		for color in varDomain:
+			nextVar.pickedValue = color
+			state.assignedVars[nextVar.point] = nextVar
+			if canAssign(state, nextVar, color, ends, puzzleLength, puzzleWidth, domain):
+				possibleValues.add(color)
+
+				# print(f"{color} was valid for {nextVar.point}")
+			# else:
+				# print(f"{color} was not valid for {nextVar.point}")
+			state.assignedVars.pop(nextVar.point)
+			nextVar.pickedValue = '_'
+		if not possibleValues:
+			print("terminated early")
+			return False
+		if possibleValues != origValue:
+			point = nextVar.point
+			varsHolder + makeNextPoints(point[0], point[1])
+		nextVar.values = possibleValues
+		nextVar.heur = len(possibleValues)
+		print(f"{nextVar.point}: {nextVar.values}")
+	return True
+
+
+def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
+	pq = PriorityQueue()
+	while not state.unassignedVars.empty():
+		var = state.unassignedVars.get()
+		# TODO: Change this to PQ, and then use some other class to define a heuristic to identify least constraining value
+		possibleValues = set()
+		varDomain = var.values if var.values != None else domain
+		for color in varDomain:
+			var.pickedValue = color
+			state.assignedVars[var.point] = var
+			if canAssign(state, var, color, ends, puzzleLength, puzzleWidth, domain):
+				possibleValues.add(color)
+			# 	print(f"{color} was valid for {var.point}")
+			# else:
+			# 	print(f"{color} was not valid for {var.point}")
+			state.assignedVars.pop(var.point)
+			var.pickedValue = '_'
+		if not possibleValues:
+			print("terminated early")
+			return False
+		var.values = possibleValues
+		var.heur = len(possibleValues)
+		# print(var)
+		pq.put(var)
+	state.unassignedVars = pq
+	return True
+
+# When building the initial state
+# Initialize the variables with values that are possible
+	# Set the heuristic to the variables be the # of values remaining
+# Need to update legal values
+# Figure out how to do least constrained value?
+
 if __name__ == "__main__":
 	fileNames = [
-	# 'input55.txt',
+	'input55.txt',
 	# 'input77.txt',
 	# 'input88.txt',
 	# 'input991.txt',
-	'input10101.txt',
-	'input10102.txt'
+	# 'input10101.txt',
+	# 'input10102.txt'
 	]
 	sols = []
 	for puzzle in fileNames:
@@ -159,14 +278,19 @@ if __name__ == "__main__":
 
 		(initState, domain) = buildInitialState(puzzle)
 		ends = initState.assignedVars.copy()
+		puzzleLength = len(puzzle)
+		puzzleWidth = len(puzzle[0])
 		startTime = time.clock()
-		(finalState, acc) = csp(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
+
+		# (finalState, acc) = cspRandom(initState, domain, ends, len(puzzle[0]),len(puzzle), puzzle, 0)
+		# updateAllValues(initState, domain, ends, puzzleLength, puzzleWidth)
+		(finalState, acc) = cspSmart(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
 		totalTime = time.clock() - startTime
 		sols.append(printSol(initState, puzzle, totalTime, acc))
 
-	# # Check solutions
-	# for x in range(0, len(fileNames)):
-	# 	fileName = fileNames[x]
-	# 	sol = readInput(buildSolName(fileName))
-	# 	assert(sol == sols[x])
+	# Check solutions
+	for x in range(0, len(fileNames)):
+		fileName = fileNames[x]
+		sol = readInput(buildSolName(fileName))
+		assert(sol == sols[x])
 
