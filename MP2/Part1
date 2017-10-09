@@ -90,7 +90,18 @@ def printMap(maze):
 	for line in maze:
 		print(''.join(line))
 
-def isStateComplete(state):
+def isStateComplete(state, domain, length, width):
+	if state.unassignedVars.empty():
+		for x in range(length):
+			for y in range(width):
+				if (x,y) not in state.assignedVars:
+					var = state.varsMap[(x,y)]
+					var.values = domain
+					state.unassignedVars.put(state.varsMap[(x,y)])
+					print(f"added {state.varsMap[(x,y)]}, {state.unassignedVars.empty()}")
+		return state.unassignedVars.empty()
+	else:
+		return False
 	return state.unassignedVars.empty()
 
 def makeNextPoints(x,y):
@@ -146,7 +157,7 @@ def canAssign(state, var, color, ends, puzzleLength, puzzleWidth, domain):
 
 def cspRandom(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 	
-	if isStateComplete(state):
+	if isStateComplete(state, domain, puzzleLength, puzzleWidth):
 		return (state, acc)
 	var = state.unassignedVars.get()
 	for color in domain:
@@ -170,7 +181,7 @@ def buildSolName(puzzle):
 	return f"sol{puzzle}"
 
 def cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
-	if isStateComplete(state):
+	if isStateComplete(state, domain, puzzleLength, puzzleWidth):
 		return (state, acc)
 
 	# if updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
@@ -186,11 +197,12 @@ def cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 
 			printDebug(state, puzzle)
 			print("\n")
-			time.sleep(1)
+			# time.sleep(1)
 
 			acc += 1
 			(result, acc) = cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc)
 			if result != None:
+				print("finished")
 				return (result, acc)
 			state.assignedVars.pop(var.point)
 			var.pickedValue = '_'
@@ -202,7 +214,6 @@ def updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
 	varsHolder = [var]
 	while varsHolder:
 		nextVar = varsHolder.pop()
-		print(nextVar)
 		origValue = nextVar.values
 		varDomain = nextVar.values if nextVar.values != None else domain
 		possibleValues = set()
@@ -218,7 +229,7 @@ def updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
 			state.assignedVars.pop(nextVar.point)
 			nextVar.pickedValue = '_'
 		if not possibleValues:
-			print("terminated early")
+			print(f"terminated early. No values for {nextVar.point}")
 			return False
 		if possibleValues != origValue:
 			point = nextVar.point
@@ -231,8 +242,11 @@ def updateSingleValue(state, domain, var, ends, puzzleLength, puzzleWidth):
 
 def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
 	pq = PriorityQueue()
+	poppedValues = set()
+	retVal = True
 	while not state.unassignedVars.empty():
 		var = state.unassignedVars.get()
+		poppedValues.add(var)
 		# TODO: Change this to PQ, and then use some other class to define a heuristic to identify least constraining value
 		possibleValues = set()
 		varDomain = var.values if var.values != None else domain
@@ -247,14 +261,22 @@ def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
 			state.assignedVars.pop(var.point)
 			var.pickedValue = '_'
 		if not possibleValues:
-			print("terminated early")
-			return False
+			print(f"terminated early. No values for {var}")
+			state.unassignedVars.put(var)
+			# for val in poppedValues:
+				# state.unassignedVars.put(val)
+			retVal = False
+			return retVal
 		var.values = possibleValues
 		var.heur = len(possibleValues)
 		# print(var)
 		pq.put(var)
+	# print("yo")	
+	# for val in poppedValues:
+	# 	print(val)
+	# 	state.unassignedVars.put(val)
 	state.unassignedVars = pq
-	return True
+	return retVal
 
 # When building the initial state
 # Initialize the variables with values that are possible
@@ -264,10 +286,10 @@ def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
 
 if __name__ == "__main__":
 	fileNames = [
-	'input55.txt',
+	# 'input55.txt',
 	# 'input77.txt',
 	# 'input88.txt',
-	# 'input991.txt',
+	'input991.txt',
 	# 'input10101.txt',
 	# 'input10102.txt'
 	]
@@ -285,6 +307,8 @@ if __name__ == "__main__":
 		# (finalState, acc) = cspRandom(initState, domain, ends, len(puzzle[0]),len(puzzle), puzzle, 0)
 		# updateAllValues(initState, domain, ends, puzzleLength, puzzleWidth)
 		(finalState, acc) = cspSmart(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
+		# print(finalState.varsMap[(3,1)])
+		# print(finalState.varsMap[(6, 5)])
 		totalTime = time.clock() - startTime
 		sols.append(printSol(initState, puzzle, totalTime, acc))
 
