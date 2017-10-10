@@ -92,13 +92,13 @@ def printMap(maze):
 
 def isStateComplete(state, domain, length, width):
 	if state.unassignedVars.empty():
-		# for x in range(length):
-		# 	for y in range(width):
-		# 		if (x,y) not in state.assignedVars:
-		# 			var = state.varsMap[(x,y)]
-		# 			var.values = domain
-		# 			state.unassignedVars.put(state.varsMap[(x,y)])
-		# 			print(f"added {state.varsMap[(x,y)]}, {state.unassignedVars.empty()}")
+		for x in range(length):
+			for y in range(width):
+				if (x,y) not in state.assignedVars:
+					var = state.varsMap[(x,y)]
+					var.values = domain
+					state.unassignedVars.put(state.varsMap[(x,y)])
+					print(f"added {state.varsMap[(x,y)]}, {state.unassignedVars.empty()}")
 		return state.unassignedVars.empty()
 	else:
 		return False
@@ -109,8 +109,8 @@ def makeNextPoints(x,y):
 def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth, domain):
 	(x,y) = point
 	# Would only see this from canAssign, and can assign an edge piece so return true
-	if x < 0 or y < 0 or x == puzzleWidth or y == puzzleLength:
-		return True
+	# if x < 0 or y < 0 or x == puzzleWidth or y == puzzleLength:
+	# 	return True
 	nextPoints = makeNextPoints(x,y)
 	numSame = 0
 	numAssignedNeigh = 0
@@ -126,7 +126,7 @@ def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth, domain):
 			if var.pickedValue != "_":
 				if var.pickedValue == color:
 					numSame += 1
-			elif color in var.values:
+			elif color in var.values and len(var.values) == 1:
 				numSame += 1
 
 	if numSame > 2:
@@ -188,14 +188,14 @@ def cspSmart(state, domain, ends, puzzleLength, puzzleWidth, puzzle, acc):
 
 		var = state.unassignedVars.get()
 		varDomain = var.values
-		print(f"point {var.point}:{varDomain}")
+		# print(f"point {var.point}:{varDomain}")
 		for color in varDomain:
 			var.pickedValue = color
 			state.assignedVars[var.point] = var
 
 
-			printDebug(state, puzzle)
-			print("\n")
+			# printDebug(state, puzzle)
+			# print("\n")
 			# time.sleep(0.5)
 
 			acc += 1
@@ -264,17 +264,25 @@ def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
 			var.pickedValue = '_'
 		if not possibleValues:
 			# print(f"terminated early. No values for {var}")
-			# state.unassignedVars.put(var)
+			# Hard reset the values
+			pq.put(var)
+			while not state.unassignedVars.empty():
+				t = state.unassignedVars.get()
+				t.values = domain
+				t.heur = 0
+				pq.put(t)
+
 			for val in poppedValues:
-				# print(f"Adding {val} back")
 				# TODO: This is less than ideal. Should not be all values in domain
 				val.values = domain
-				state.unassignedVars.put(val)
+				val.heur = 0
+				# print(f"Adding {val} back")
+			state.unassignedVars = pq
 			retVal = False
 			return retVal
 		var.values = possibleValues
 		var.heur = len(possibleValues)
-		# print(var)
+		# print(f"updatePop: {var}")
 		pq.put(var)
 	# print("yo")	
 	# for val in poppedValues:
@@ -292,11 +300,11 @@ def updateAllValues(state, domain, ends, puzzleLength, puzzleWidth):
 if __name__ == "__main__":
 	fileNames = [
 	# 'input55.txt',
-	# 'input77.txt',
-	# 'input88.txt',
+	'input77.txt',
+	'input88.txt',
 	'input991.txt',
-	# 'input10101.txt',
-	# 'input10102.txt'
+	'input10101.txt',
+	'input10102.txt'
 	]
 	sols = []
 	for puzzle in fileNames:
