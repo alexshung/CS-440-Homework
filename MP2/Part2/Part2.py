@@ -85,6 +85,7 @@ class Board():
 		takenPiece = None
 		if movePos in self.pieceMap:
 			takenPiece = self.pieceMap[movePos]
+			# print(f"Really taken? taken: {takenPiece}, by: {piece}")
 			self.black.remove(takenPiece) if takenPiece.color == bp else self.white.remove(takenPiece)
 		self.pieceMap[movePos] = piece
 		return takenPiece
@@ -162,24 +163,20 @@ def boardWon(board):
 # def betterBoard(curBestBoard, evalBoard, color, heur = defensiveHeuristic1):
 # 	return heur(curBestBoard, color) > heur(evalBoard, color)
 
-def playGame(board, color, depth, heur = defensiveHeuristic1):
-	isMax = color == wp
+def playGame(board, color, depth, playerColor, heur = defensiveHeuristic1):
+	isMax = color == playerColor
 
-	bestBoard = board
-	myPieces = board.white if isMax else board.black
+	bestBoard = None
+	myPieces = board.white if color == wp else board.black
 	# Stop after the 6th move, meaning each player has moved 3 times. 
 	# TODO: Re-evaluate if this should just be 3
 	if depth > depthLimit - 1 or boardWon(board):
 		# print(f"returning cause of depth {depth} or {boardWon(board)}")
+		board.curHeur = heur(board, playerColor)
 		return board
-
-	# For all of my pieces
-	# numPieces = 0
 	
-	# print(f"{depth}: {st}")
-	
-	bestScore = 0
-
+	bestScore = 0 if isMax else 100000000
+	bestMove = None
 	for piece in myPieces:
 		# print(f"{depth}: {piece}")
 		board.pop(piece)
@@ -194,30 +191,39 @@ def playGame(board, color, depth, heur = defensiveHeuristic1):
 				# print(piece)
 				takenPiece = board.makeMove(move, movedPiece)
 				
+				# if takenPiece:
+				# print(f"{piece}, move {move}. Took {takenPiece}")
 				# printBoard(board)
-				# time.sleep(.5)
-
-				finalBoard = playGame(board, bp, depth + 1, heur) if isMax else playGame(board, wp, depth + 1, heur)
+					# time.sleep(1)
+				nextColor = bp if color == wp else wp
+				finalBoard = playGame(board, nextColor, depth + 1, playerColor, heur)
 				
+				boardScore = finalBoard.curHeur
+				isBetter = boardScore > bestScore if isMax else boardScore < bestScore
 				# If the cut off point was better than anything we've seen, save that move for this piece
-				# Question: Why not save that move across all pieces? 
 				# TODO: Will need to track what the actual move was on which piece which resulted in this
-				boardScore = heur(finalBoard, piece.color)
-				if boardScore > bestScore:
-					# print(f"Found better board: {depth}")
+				# TODO: Figure out if I can keep the same board, and just save the best move / best score? for the board
+
+				if isBetter:
 					bestScore = boardScore
-					bestBoard = cp.deepcopy(finalBoard)
+					bestBoard = finalBoard
 					bestBoard.bestMove = (move, piece)
+					bestMove = (move, piece)
+
+					# print(f"Found better board: {depth} : {move}, {piece}")
 					# printBoard(bestBoard)
+
 				board.pop(movedPiece)
 				movedPiece.x = piece.x
 				movedPiece.y = piece.y
 				board.add(movedPiece)
 				if takenPiece:
 					board.add(takenPiece)
-
+		# Here because the last move of the moved piece might not be valid, so it won't be added back on
 		board.pop(movedPiece)
 		board.add(piece)
+	bestBoard.curHeur = bestScore
+	bestBoard.bestMove = bestMove
 	return bestBoard
 
 def main():
@@ -225,14 +231,18 @@ def main():
 	printBoard(board)
 	isWhite = True
 	while not boardWon(board):
-		nextBoard = playGame(board, wp, 0, defensiveHeuristic1) if isWhite else playGame(board, bp, 0, offensiveHeuristic1)
+		nextBoard = playGame(board, wp, 0, wp, defensiveHeuristic1) if isWhite else playGame(board, bp, 0, bp, defensiveHeuristic1)
+		printBoard(board)
+		print(f"About to make a real move: {nextBoard.bestMove[0]} : {nextBoard.bestMove[1]}")
 		board.makeMove(nextBoard.bestMove[0], nextBoard.bestMove[1])
 		print()
 		printBoard(board)
+		# time.sleep(1)
 		isWhite = not isWhite
 
 if __name__ == '__main__':
-	cProfile.run('main()')
+	# cProfile.run('main()')
+	main()
 
 
 
