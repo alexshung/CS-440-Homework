@@ -17,27 +17,17 @@ import random as r
 import time
 import copy as cp
 import cProfile
+from Heuristics import defensiveHeuristic2, defensiveHeuristic1, offensiveHeuristic1, offensiveHeuristic2
+
 # Colors:
 bp = "B"
 wp = "W"
 boardSize = 8
 maxScore = 100000
 
-def defensiveHeuristic1(board, color, d, isBoardWon, t):
-	numPieces = len(board.black) if color == bp else len(board.white)
-	return 2 * numPieces  + r.random()
-
-def offensiveHeuristic1(board, color, d, isBoardWon, t):
-	numPiecesLeft = len(board.black) if color == wp else len(board.white)
-	return 2 * (30 - numPiecesLeft) + r.random()
-
-def offensiveHeuristic2(board, color, depth, isBoardWon, isMax):
-	basicHeur = offensiveHeuristic1(board, color, depth, isBoardWon, isMax)
-	return basicHeur - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
-
-def defensiveHeuristic2(board, color, depth, isBoardWon, isMax):
-	basicHeur = defensiveHeuristic1(board, color, depth, isBoardWon, isMax)
-	return basicHeur - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
+# def defensiveHeuristic1(board, color, d, isBoardWon, t):
+# 	numPieces = len(board.black) if color == bp else len(board.white)
+# 	return 2 * numPieces  + r.random()
 
 def printPieces(pieces):
 	st = ""
@@ -286,8 +276,8 @@ def runGame(p1, p2):
 		# print(f"About to make a real move: {bestMove[0]} : {bestMove[1]}")
 		
 		board.makeMove(bestMove[0], bestMove[1])
-		print()
-		printBoard(board)
+		# print()
+		# printBoard(board)
 		# time.sleep(.25)
 		isWhite = not isWhite
 
@@ -310,6 +300,7 @@ def runGame(p1, p2):
 	print(f"W = {p1}: # of game tree nodes -> {whiteNodeCount}, avg nodes per move -> {round(whiteNodeCount / numMovesWhite)}, avg amount of time -> {round(whiteTime / numMovesWhite, 3)}, # of pieces captured -> {16 - len(board.black)}")
 	print(f"B = {p2}: # of game tree nodes -> {blackNodeCount}, avg nodes per move -> {round(blackNodeCount / numMovesBlack)}, avg amount of time -> {round(blackTime / numMovesBlack, 3)}, # of pieces captured -> {16 - len(board.white)}")
 	print(f"total moves: {moves}")
+	return winner
 
 def runMinimaxSearch(heur1, heur2):
 	depthLimit = 3
@@ -337,54 +328,67 @@ def runAlpahVsMinimax():
 	depthMin = 3
 	alpha = Player(depthAlpha, True, offensiveHeuristic1)
 	minMax = Player(depthMin, False, offensiveHeuristic1)
-	runGame(alpha, minMax)
+	return runGame(alpha, minMax)
 
 def runOffensive2VsDefensive1():
 	depth = 3
 	offensive2 = Player(depth, True, offensiveHeuristic2)
 	defensive1 = Player(depth, True, defensiveHeuristic1)
-	runGame(offensive2, defensive1)
+	return runGame(offensive2, defensive1)
 
 def runDef2VsOff1():
 	depth = 3
 	def2 = Player(depth, True, defensiveHeuristic2)
 	off1 = Player(depth, True, offensiveHeuristic1)
-	runGame(def2, off1)
+	return runGame(def2, off1)
 
 def runOff2VsOff1():
 	depth = 3
 	off2 = Player(depth, True, offensiveHeuristic2)
 	off1 = Player(depth, True, offensiveHeuristic1)
-	runGame(off2, off1)
+	return runGame(off2, off1)
 
 def runDef2VsDef1():
 	depth = 3
 	def2 = Player(depth, True, defensiveHeuristic2)
 	def1 = Player(depth, True, defensiveHeuristic1)
-	runGame(def2, def1)
+	return runGame(def2, def1)
 
 def runOff2VsDef2():
 	depth = 3
 	off2 = Player(depth, True, offensiveHeuristic2)
 	def2 = Player(depth, True, defensiveHeuristic2)
-	runGame(off2, def2)
+	return runGame(off2, def2)
+
+def runxTimes(funct, x):
+	victoryMap = {}
+	for y in range(0, x):
+		winner = funct()
+		if winner in victoryMap:
+			victoryMap[winner.__name__()] += 1
+		else:
+			victoryMap[winner.__name__()] = 1
+	for p in victoryMap:
+		print(f"{p} won {victoryMap[p]}")
 
 def main():
+	
 	# runAlphaDefensive()
 	# runMinimaxSearch(defensiveHeuristic1, defensiveHeuristic1)
 	# runAlphaBeta()
 
 	# Required runs
+	
 	# runAlpahVsMinimax()
 	# runOffensive2VsDefensive1()
-	runDef2VsOff1()
-	# runOff2VsOff1()
+	# runDef2VsOff1()
+	runxTimes(runOff2VsOff1, 10)
 	# runDef2VsDef1()
 	# runOff2VsDef2()
 
 if __name__ == '__main__':
-	# cProfile.run('main()')
-	main()
+	cProfile.run('main()')
+	# main()
 
 
 
