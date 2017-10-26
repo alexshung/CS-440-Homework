@@ -23,17 +23,21 @@ wp = "W"
 boardSize = 8
 maxScore = 100000
 
-def defensiveHeuristic1(board, color):
+def defensiveHeuristic1(board, color, d, isBoardWon, t):
 	numPieces = len(board.black) if color == bp else len(board.white)
 	return 2 * numPieces  + r.random()
 
-def offensiveHeuristic1(board, color):
+def offensiveHeuristic1(board, color, d, isBoardWon, t):
 	numPiecesLeft = len(board.black) if color == wp else len(board.white)
 	return 2 * (30 - numPiecesLeft) + r.random()
 
-def offensiveHeuristic2(board, color):
-	numPiecesLeft = len(board.black) if color == wp else len(board.white)
+def offensiveHeuristic2(board, color, depth, isBoardWon, isMax):
+	basicHeur = offensiveHeuristic1(board, color, depth, isBoardWon, isMax)
+	return basicHeur - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
 
+def defensiveHeuristic2(board, color, depth, isBoardWon, isMax):
+	basicHeur = defensiveHeuristic1(board, color, depth, isBoardWon, isMax)
+	return basicHeur - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
 
 def printPieces(pieces):
 	st = ""
@@ -170,12 +174,10 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 	bestBoard = None
 	myPieces = board.white if color == wp else board.black
 
-	# TODO: Only do this for AphaBeta
 	# TODO: Make board won score part of the heuristic
 	isBoardWon = boardWon(board)
-	if depth > depthLimit - 1 or isBoardWon:
-		score = heur(board, playerColor) - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
-		# score -= depth
+	if depth > depthLimit - 1 or (isAlphaBeta and isBoardWon):
+		score = heur(board, playerColor, depth, isBoardWon, isMax)
 		return (score, None, 1)
 	
 	# TODO: We need to change this to handle parent score to do alpha beta pruning
@@ -183,16 +185,13 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 	bestMove = None
 	shortCircuit = False
 	totalExpanded = 0
-	foundWinningBoard = False
 	if depth == 0:
 		printPieces(myPieces)
 	for piece in myPieces:
 
-		if isAlphaBeta and shortCircuit:
-			break
-		# TODO: Only do this for AlphaBeta
-		if foundWinningBoard:
-			break
+		if isAlphaBeta:
+			if shortCircuit:
+		 		break
 		# if depth == 0:
 		# 	print(f"Depth 0: {piece}")
 		board.pop(piece)
@@ -212,25 +211,23 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 
 				nextColor = bp if color == wp else wp
 
-				# finalBoard = playGame(board, nextColor, depth + 1, playerColor, heur)
-
 				(boardScore, nothing, numNodesExpanded) = playGame(board, nextColor, depth + 1, playerColor, depthLimit, heur, isAlphaBeta, bestPieceScore)
+				
+				# TODO: Don't count leaves as nodes somehow
 				totalExpanded += numNodesExpanded
+				
+				if not boardScore:
+					boardScore = maxScore if isMax else 0
 
+				# if boardWon(board):
+				# 	print(f" {depth}, {bestPieceScore}, {boardScore}")
 				isBetter = True if not bestPieceScore else boardScore > bestPieceScore if isMax else boardScore < bestPieceScore
 				# if depth == 1:
 				# 	print(f"{isBetter} : {bestPieceScore} : {boardScore} : {piece} : {move} : {playerColor}")
 				# If the cut off point was better than anything we've seen, save that move for this piece
 				# TODO: Eval if we need bestPieceScore
 				if isBetter:
-					# if boardScore == maxScore:
-					# 	print(f"depth: {depth}, playerColor: {playerColor}, isMax: {isMax}, parentScore: {parentScore}, bestScore: {bestScore}, boardScore: {boardScore}")
-					# print("Never Better?")
 					bestPieceScore = boardScore
-					# bestBoard = finalBoard
-					# print(f"{depth}: Found better move: {move}, {piece}")
-					# printBoard(board)
-					# time.sleep(1)
 					bestPieceMove = (move, piece)
 
 				board.pop(movedPiece)
@@ -241,16 +238,11 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 					board.add(takenPiece)
 
 				isShortCircuit = False if not parentScore else bestPieceScore > parentScore if isMax else bestPieceScore < parentScore
-				if isAlphaBeta and isShortCircuit:
-					shortCircuit = True
-					break
-				# TODO: Only do this for alpha beta
-				# if isAlphaBeta:
-				if bestScore == maxScore and isMax:
-					# print(f"depth: {depth}, playerColor: {playerColor}, isMax: {isMax}, parentScore: {parentScore}, bestScore: {bestScore}, boardScore: {boardScore}")
-					foundWinningBoard = True
-					break
-		# print(f"AS: {bestScore} : {bestPieceScore}")
+				if isAlphaBeta:
+					if (boardWon(board) and isMax) or isShortCircuit:
+						shortCircuit = True
+						break
+
 		isBetterPiece = True if not bestScore else False if not bestPieceScore else bestPieceScore > bestScore if isMax else bestPieceScore < bestScore
 		if isBetterPiece:
 			bestScore = bestPieceScore
@@ -291,7 +283,7 @@ def runGame(p1, p2):
 		(accNodesExpanded, timeTaken) = statsTracker[isWhite]
 		statsTracker[isWhite] = (accNodesExpanded + nodesExpanded, timeTaken + time.clock() - startTime)
 
-		print(f"About to make a real move: {bestMove[0]} : {bestMove[1]}")
+		# print(f"About to make a real move: {bestMove[0]} : {bestMove[1]}")
 		
 		board.makeMove(bestMove[0], bestMove[1])
 		print()
@@ -311,6 +303,7 @@ def runGame(p1, p2):
 	blackNodeCount = statsTracker[False][0]
 	whiteTime = statsTracker[True][1]
 	blackTime = statsTracker[False][1]
+
 	print("Final Board:")
 	printBoard(board)
 	print(f"winning player: {winner}")
@@ -327,7 +320,7 @@ def runMinimaxSearch(heur1, heur2):
 def runAlphaDefensive():
 	depthLimit = 3
 	p1 = Player(depthLimit, False, defensiveHeuristic1)
-	p2 = Player(depthLimit, False, heur2)
+	p2 = Player(depthLimit, False, defensiveHeuristic1)
 	runGame(p1, p2)
 
 def runAlphaBeta():
@@ -336,17 +329,58 @@ def runAlphaBeta():
 	defensive = Player(depth, True, defensiveHeuristic1)
 	runGame(offensive, defensive)
 
+#####################
+### Required Runs ###
+#####################
 def runAlpahVsMinimax():
-	depthAlpha = 5
+	# depthAlpha = 5
 	depthMin = 3
 	alpha = Player(depthAlpha, True, offensiveHeuristic1)
 	minMax = Player(depthMin, False, offensiveHeuristic1)
 	runGame(alpha, minMax)
 
+def runOffensive2VsDefensive1():
+	depth = 3
+	offensive2 = Player(depth, True, offensiveHeuristic2)
+	defensive1 = Player(depth, True, defensiveHeuristic1)
+	runGame(offensive2, defensive1)
+
+def runDef2VsOff1():
+	depth = 3
+	def2 = Player(depth, True, defensiveHeuristic2)
+	off1 = Player(depth, True, offensiveHeuristic1)
+	runGame(def2, off1)
+
+def runOff2VsOff1():
+	depth = 3
+	off2 = Player(depth, True, offensiveHeuristic2)
+	off1 = Player(depth, True, offensiveHeuristic1)
+	runGame(off2, off1)
+
+def runDef2VsDef1():
+	depth = 3
+	def2 = Player(depth, True, defensiveHeuristic2)
+	def1 = Player(depth, True, defensiveHeuristic1)
+	runGame(def2, def1)
+
+def runOff2VsDef2():
+	depth = 3
+	off2 = Player(depth, True, offensiveHeuristic2)
+	def2 = Player(depth, True, defensiveHeuristic2)
+	runGame(off2, def2)
+
 def main():
-	runMinimaxSearch(defensiveHeuristic1, defensiveHeuristic1)
+	# runAlphaDefensive()
+	# runMinimaxSearch(defensiveHeuristic1, defensiveHeuristic1)
 	# runAlphaBeta()
+
+	# Required runs
 	# runAlpahVsMinimax()
+	# runOffensive2VsDefensive1()
+	runDef2VsOff1()
+	# runOff2VsOff1()
+	# runDef2VsDef1()
+	# runOff2VsDef2()
 
 if __name__ == '__main__':
 	# cProfile.run('main()')
