@@ -277,7 +277,7 @@ def runGame(p1, p2):
 		
 		board.makeMove(bestMove[0], bestMove[1])
 		# print()
-		# printBoard(board)
+		printBoard(board)
 		# time.sleep(.25)
 		isWhite = not isWhite
 
@@ -364,7 +364,7 @@ def runxTimes(funct, x):
 	victoryMap = {}
 	for y in range(0, x):
 		winner = funct()
-		if winner in victoryMap:
+		if winner.__name__() in victoryMap:
 			victoryMap[winner.__name__()] += 1
 		else:
 			victoryMap[winner.__name__()] = 1
@@ -382,9 +382,14 @@ def main():
 	# runAlpahVsMinimax()
 	# runOffensive2VsDefensive1()
 	# runDef2VsOff1()
-	runxTimes(runOff2VsOff1, 10)
+	# runOff2VsOff1()
 	# runDef2VsDef1()
 	# runOff2VsDef2()
+
+	# Run in bulk
+	runxTimes(runOffensive2VsDefensive1, 10)
+	# runxTimes(runDef2VsOff1, 10)
+	# runxTimes(runOff2VsOff1, 10)
 
 if __name__ == '__main__':
 	cProfile.run('main()')

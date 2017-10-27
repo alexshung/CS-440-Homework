@@ -33,10 +33,25 @@ def defensiveHeuristic2(board, color, depth, isBoardWon, isMax):
 	return score
 
 def offensiveHeuristic2(board, color, depth, isBoardWon, isMax):
-	basicHeur = defensiveHeuristic1(board, color, depth, isBoardWon, isMax)
-	return basicHeur - depth if not isBoardWon else -1 * maxScore + depth if isMax else maxScore - depth
+	score = None
+	if isBoardWon:
+		score = maxScore - depth
+		if isMax:
+			score = score * -1
+		score = -1 * maxScore + depth if isMax else maxScore - depth
+	else:
+		numPiecesLeft = len(board.black) if color == wp else len(board.white)
+		basicHeur = 2 * (30 - numPiecesLeft)
+		positionScore = getFarthestPiece(board, color)
 
-# This ends up looking like a defensive heuristic...
+		oppColor = wp if color == bp else bp
+		opponentScore = offensiveHeuristic1(board, oppColor)
+		oppPositionScore = getFarthestPiece(board, oppColor)
+		score = basicHeur + r.random() - depth + positionScore - opponentScore #- oppPositionScore
+	return score
+
+# This returns the farthest y coordinate of the piece
+# For black that will be the greatest y, for white it will be the least
 def getFarthestPiece(board, color):
 	isMax = True if color == bp else False
 	myPieces = board.black if color == bp else board.white
