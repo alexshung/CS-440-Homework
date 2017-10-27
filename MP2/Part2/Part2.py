@@ -200,7 +200,7 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 				takenPiece = board.makeMove(move, movedPiece)
 
 				nextColor = bp if color == wp else wp
-
+				# TODO: Potential speed increase by returning if the board is won after making a move
 				(boardScore, nothing, numNodesExpanded) = playGame(board, nextColor, depth + 1, playerColor, depthLimit, heur, isAlphaBeta, bestPieceScore)
 				
 				# TODO: Don't count leaves as nodes somehow
@@ -380,14 +380,14 @@ def main():
 	# Required runs
 	
 	# runAlpahVsMinimax()
-	# runOffensive2VsDefensive1()
+	runOffensive2VsDefensive1()
 	# runDef2VsOff1()
 	# runOff2VsOff1()
 	# runDef2VsDef1()
 	# runOff2VsDef2()
 
 	# Run in bulk
-	runxTimes(runOffensive2VsDefensive1, 10)
+	# runxTimes(runOffensive2VsDefensive1, 10)
 	# runxTimes(runDef2VsOff1, 10)
 	# runxTimes(runOff2VsOff1, 10)
 

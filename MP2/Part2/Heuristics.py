@@ -58,6 +58,8 @@ def getFarthestPiece(board, color, isOffensive = False):
 	farthest = None
 	for piece in myPieces:
 		curPos = piece.y if not isBlack else 8 - piece.y #* 2 + piece.x
+		if isOffensive:
+			curPos += piece.x / 2
 		isBetter = True if not farthest else curPos > farthest if isOffensive else curPos < farthest
 		if isBetter:
 			farthest = curPos
