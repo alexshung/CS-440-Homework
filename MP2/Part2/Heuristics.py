@@ -50,8 +50,7 @@ def offensiveHeuristic2(board, color, depth, isBoardWon, isMax):
 		score = basicHeur + r.random() - depth + positionScore * 2 - opponentScore #- oppPositionScore
 	return score
 
-# This returns the farthest y coordinate of the piece
-# For black that will be the greatest y, for white it will be the least
+# This returns the farthest distance a piece has traveled + how far to the right it is OR the shortest distance a piece has traveled
 def getFarthestPiece(board, color, isOffensive = False):
 	isBlack = True if color == bp else False
 	myPieces = board.black if color == bp else board.white
@@ -59,7 +58,7 @@ def getFarthestPiece(board, color, isOffensive = False):
 	for piece in myPieces:
 		curPos = piece.y if not isBlack else 8 - piece.y #* 2 + piece.x
 		if isOffensive:
-			curPos += piece.x / 2
+			curPos = curPos * 2 + piece.x
 		isBetter = True if not farthest else curPos > farthest if isOffensive else curPos < farthest
 		if isBetter:
 			farthest = curPos

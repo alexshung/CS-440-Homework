@@ -15,7 +15,6 @@
 
 import random as r
 import time
-import copy as cp
 import cProfile
 from Heuristics import defensiveHeuristic2, defensiveHeuristic1, offensiveHeuristic1, offensiveHeuristic2
 
@@ -25,9 +24,6 @@ wp = "W"
 boardSize = 8
 maxScore = 100000
 
-# def defensiveHeuristic1(board, color, d, isBoardWon, t):
-# 	numPieces = len(board.black) if color == bp else len(board.white)
-# 	return 2 * numPieces  + r.random()
 
 def printPieces(pieces):
 	st = ""
@@ -72,9 +68,6 @@ class Board():
 	def hasPiece(self, coord):
 		return coord in self.pieceMap
 
-	# def deepcopy(self):
-	# 	return Board(self.black.deepcopy(), self.white.deepcopy())
-
 	def makeMove(self, movePos, piece):
 		self.pieceMap.pop((piece.x, piece.y))
 		piece.x = movePos[0]
@@ -83,10 +76,12 @@ class Board():
 		takenPiece = None
 		if movePos in self.pieceMap:
 			takenPiece = self.pieceMap[movePos]
-			# print(f"Really taken? taken: {takenPiece}, by: {piece}")
 			self.black.remove(takenPiece) if takenPiece.color == bp else self.white.remove(takenPiece)
 		self.pieceMap[movePos] = piece
-		return takenPiece
+
+		# Victory is either no pieces, or there exists a piece on the other side of the board
+		isBoardWon = (piece.y == 0 and piece.color == wp) or (piece.y == boardSize -1 and piece.color == bp) or len(self.black) == 0  or len(self.white) == 0
+		return (takenPiece, isBoardWon)
 
 class Piece():
 	"""docstring for Piece"""
@@ -100,10 +95,7 @@ class Piece():
 
 	def __str__(self):
 		return f"({self.x}, {self.y}): {self.color}"
-# class Move():
-# 	def __init__(self, x, y, type):
-# 		self.x = x
-# 		self.y = y
+
 def minimaxSearch():
 	pass
 
@@ -116,7 +108,6 @@ def printBoard(board):
 		print(''.join(line))
 	print()
 
-# Do I want a board that keeps white and black pieces? Seems to make the most sense
 def buildInitialBoard():
 	blackPieces = set()
 	whitePieces = set()
@@ -158,32 +149,26 @@ def boardWon(board):
 			return True
 	return winningState
 
-def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuristic1, isAlphaBeta = False, parentScore = None):
+def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuristic1, isAlphaBeta = False, parentScore = None, isBoardWon = False):
 	isMax = color == playerColor
 
 	bestBoard = None
 	myPieces = board.white if color == wp else board.black
 
-	# TODO: Make board won score part of the heuristic
-	isBoardWon = boardWon(board)
 	if depth > depthLimit - 1 or (isAlphaBeta and isBoardWon):
 		score = heur(board, playerColor, depth, isBoardWon, isMax)
-		return (score, None, 1)
+		return (score, None, 0)
 	
 	# TODO: We need to change this to handle parent score to do alpha beta pruning
 	bestScore = None
 	bestMove = None
 	shortCircuit = False
-	totalExpanded = 0
-	if depth == 0:
-		printPieces(myPieces)
+	totalExpanded = 1
 	for piece in myPieces:
 
 		if isAlphaBeta:
 			if shortCircuit:
 		 		break
-		# if depth == 0:
-		# 	print(f"Depth 0: {piece}")
 		board.pop(piece)
 		movedPiece = piece.copy()
 		board.add(movedPiece)
@@ -193,29 +178,21 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 		bestPieceScore = None
 		bestPieceMove = None
 		for move in allMoves:
-			# if depth == 0:
-			# 	print(f"{move} : {isValid(move, piece, board, depth)}")
+
 			# If it's a valid move, make that move and continue down until depth is ht
 			if isValid(move, piece, board, depth):
-				takenPiece = board.makeMove(move, movedPiece)
+				(takenPiece, isNextBoardWon) = board.makeMove(move, movedPiece)
 
 				nextColor = bp if color == wp else wp
-				# TODO: Potential speed increase by returning if the board is won after making a move
-				(boardScore, nothing, numNodesExpanded) = playGame(board, nextColor, depth + 1, playerColor, depthLimit, heur, isAlphaBeta, bestPieceScore)
+				(boardScore, nothing, numNodesExpanded) = playGame(board, nextColor, depth + 1, playerColor, depthLimit, heur, isAlphaBeta, bestPieceScore, isNextBoardWon)
 				
-				# TODO: Don't count leaves as nodes somehow
 				totalExpanded += numNodesExpanded
 				
 				if not boardScore:
 					boardScore = maxScore if isMax else 0
 
-				# if boardWon(board):
-				# 	print(f" {depth}, {bestPieceScore}, {boardScore}")
 				isBetter = True if not bestPieceScore else boardScore > bestPieceScore if isMax else boardScore < bestPieceScore
-				# if depth == 1:
-				# 	print(f"{isBetter} : {bestPieceScore} : {boardScore} : {piece} : {move} : {playerColor}")
-				# If the cut off point was better than anything we've seen, save that move for this piece
-				# TODO: Eval if we need bestPieceScore
+
 				if isBetter:
 					bestPieceScore = boardScore
 					bestPieceMove = (move, piece)
@@ -229,7 +206,7 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 
 				isShortCircuit = False if not parentScore else bestPieceScore > parentScore if isMax else bestPieceScore < parentScore
 				if isAlphaBeta:
-					if (boardWon(board) and isMax) or isShortCircuit:
+					if (isNextBoardWon and isMax) or isShortCircuit:
 						shortCircuit = True
 						break
 
@@ -241,8 +218,6 @@ def playGame(board, color, depth, playerColor, depthLimit, heur = defensiveHeuri
 		# Here because the last move of the moved piece might not be valid, so it won't be added back on
 		board.pop(movedPiece)
 		board.add(piece)
-	# if depth != 2:
-	# 	print(f"{depth} Best score: {bestScore}")
 	return (bestScore, bestMove, totalExpanded)
 
 class Player():
@@ -259,7 +234,7 @@ class Player():
 		return f"{alpha} - {self.heur.__name__}"
 def runGame(p1, p2):
 	board = buildInitialBoard()
-	printBoard(board)
+	# printBoard(board)
 	isWhite = True
 
 	# Stores the number of game tree nodes expanded and the amount of time taken
@@ -272,16 +247,11 @@ def runGame(p1, p2):
 		(score, bestMove, nodesExpanded) = playGame(board, wp, 0, wp, p1.depthLimit, p1.heur, p1.isAlphaBeta) if isWhite else playGame(board, bp, 0, bp, p2.depthLimit, p2.heur, p2.isAlphaBeta)
 		(accNodesExpanded, timeTaken) = statsTracker[isWhite]
 		statsTracker[isWhite] = (accNodesExpanded + nodesExpanded, timeTaken + time.clock() - startTime)
-
-		# print(f"About to make a real move: {bestMove[0]} : {bestMove[1]}")
 		
 		board.makeMove(bestMove[0], bestMove[1])
-		# print()
-		printBoard(board)
-		# time.sleep(.25)
 		isWhite = not isWhite
-
 		moves += 1
+
 	winner = p2 if isWhite else p1
 	numMovesWhite = moves / 2
 	numMovesBlack = moves / 2
@@ -324,7 +294,7 @@ def runAlphaBeta():
 ### Required Runs ###
 #####################
 def runAlpahVsMinimax():
-	# depthAlpha = 5
+	depthAlpha = 5
 	depthMin = 3
 	alpha = Player(depthAlpha, True, offensiveHeuristic1)
 	minMax = Player(depthMin, False, offensiveHeuristic1)
@@ -379,15 +349,26 @@ def main():
 
 	# Required runs
 	
+	# print("AlphaBeta vs Minimax")
 	# runAlpahVsMinimax()
-	runOffensive2VsDefensive1()
+
+	# print("Offensive2 vs Defensive1")
+	# runOffensive2VsDefensive1()
+
+	# print("Defensive2 vs Offensive1")
 	# runDef2VsOff1()
+
+	# print("Offensive2 vs Offensive1")
 	# runOff2VsOff1()
-	# runDef2VsDef1()
+
+	print("Defensive2 vs Defensive1")
+	runDef2VsDef1()
+
+	# print("Offensive2 vs Defensive2")
 	# runOff2VsDef2()
 
 	# Run in bulk
-	# runxTimes(runOffensive2VsDefensive1, 10)
+	# runxTimes(runOffensive2VsDefensive1, 50)
 	# runxTimes(runDef2VsOff1, 10)
 	# runxTimes(runOff2VsOff1, 10)
 
