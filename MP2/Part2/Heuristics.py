@@ -46,8 +46,7 @@ def offensiveHeuristic2(board, color, depth, isBoardWon, isMax):
 
 		oppColor = wp if color == bp else bp
 		opponentScore = offensiveHeuristic1(board, oppColor)
-		# oppPositionScore = getFarthestPiece(board, oppColor)
-		score = basicHeur + r.random() - depth + positionScore * 2 - opponentScore #- oppPositionScore
+		score = basicHeur + r.random() - depth + positionScore * 2 - opponentScore
 	return score
 
 # This returns the farthest distance a piece has traveled + how far to the right it is OR the shortest distance a piece has traveled

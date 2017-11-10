@@ -301,31 +301,31 @@ def runAlpahVsMinimax():
 	return runGame(alpha, minMax)
 
 def runOffensive2VsDefensive1():
-	depth = 3
+	depth = 4
 	offensive2 = Player(depth, True, offensiveHeuristic2)
 	defensive1 = Player(depth, True, defensiveHeuristic1)
 	return runGame(offensive2, defensive1)
 
 def runDef2VsOff1():
-	depth = 3
+	depth = 4
 	def2 = Player(depth, True, defensiveHeuristic2)
 	off1 = Player(depth, True, offensiveHeuristic1)
 	return runGame(def2, off1)
 
 def runOff2VsOff1():
-	depth = 3
+	depth = 4
 	off2 = Player(depth, True, offensiveHeuristic2)
 	off1 = Player(depth, True, offensiveHeuristic1)
 	return runGame(off2, off1)
 
 def runDef2VsDef1():
-	depth = 3
+	depth = 4
 	def2 = Player(depth, True, defensiveHeuristic2)
 	def1 = Player(depth, True, defensiveHeuristic1)
 	return runGame(def2, def1)
 
 def runOff2VsDef2():
-	depth = 3
+	depth = 4
 	off2 = Player(depth, True, offensiveHeuristic2)
 	def2 = Player(depth, True, defensiveHeuristic2)
 	return runGame(off2, def2)

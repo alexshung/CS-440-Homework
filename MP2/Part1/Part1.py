@@ -134,10 +134,8 @@ def isConsistent(state, point, color, ends, puzzleLength, puzzleWidth, domain):
 		return False
 	# Early termination case
 	elif numAssignedNeigh == 3:
-		# print(f"point: {point} color {color} numAssignedNeigh: {numAssignedNeigh}, {numSame}")
 		return numSame > 0 if point not in ends else True
 	elif numAssignedNeigh == 4:
-		# print(f"point: {point} color {color} numAssignedNeigh: {numAssignedNeigh}, {numSame}")
 		return numSame == 2 if point not in ends else numSame == 1
 	else:
 		return True
@@ -303,8 +301,9 @@ if __name__ == "__main__":
 	'input77.txt',
 	'input88.txt',
 	'input991.txt',
-	'input10101.txt',
-	'input10102.txt'
+	# 'input10101.txt',
+	# 'input10102.txt'
+	# 'input1212.txt'
 	]
 	sols = []
 	for puzzle in fileNames:
@@ -317,9 +316,9 @@ if __name__ == "__main__":
 		puzzleWidth = len(puzzle[0])
 		startTime = time.clock()
 
-		# (finalState, acc) = cspRandom(initState, domain, ends, len(puzzle[0]),len(puzzle), puzzle, 0)
+		(finalState, acc) = cspRandom(initState, domain, ends, len(puzzle[0]),len(puzzle), puzzle, 0)
 		# updateAllValues(initState, domain, ends, puzzleLength, puzzleWidth)
-		(finalState, acc) = cspSmart(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
+		# (finalState, acc) = cspSmart(initState, domain, ends, len(puzzle), len(puzzle[0]), puzzle, 0)
 		# print(finalState.varsMap[(3,1)])
 		# print(finalState.varsMap[(6, 5)])
 		totalTime = time.clock() - startTime
