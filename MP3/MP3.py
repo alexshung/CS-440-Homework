@@ -303,18 +303,22 @@ def runPart2():
 	totalTestData = noTestData + yesTestData
 	totalTestLabel = testNoLabel + testYesLabel
 
+	(noTrainTestData, yesTrainTestData) = buildVoiceTestData(trainingNoDataPath, trainingYesDataPath)
+	testTrainingData = noTrainTestData + yesTrainTestData
+	# bestK = findBestSmoothingConstant(totalTrainingData, totalTrainingLabel, testTrainingData) # => discovered .1 is the best
+	# print(bestK)
 	runModel(totalTrainingData, totalTrainingLabel, totalTestData, totalTestLabel, 1, 25, 10, 3)
 
 if __name__ == "__main__":
 ###############
 #### PART 1 ###
 ###############
-	runPart1()
+	# runPart1()
 
 ###############
 #### PART 2 ###
 ###############
-	# runPart2()
+	runPart2()
 	
 
 
