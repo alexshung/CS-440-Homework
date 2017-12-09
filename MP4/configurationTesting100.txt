@@ -1,0 +1,22 @@
+perceptrons.100.0.False.basicLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 96.04%
+perceptrons.100.0.False.penalizedLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 96.22%
+perceptrons.100.0.False.lenientLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 96.04%
+perceptrons.100.1.False.basicLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 95.67999999999999%
+perceptrons.100.1.False.penalizedLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 96.5%
+perceptrons.100.1.False.lenientLearningRate.isWeightRand.False.txt
+Training information
+Correctly classified overall: 96.02000000000001%
+Randomized Weight: Average is 96.1432 compared to static 96.5
+Randomized Data: Average is 96.3848 compared to static 96.5
+bias: 1, randomized data: False, learningRate: penalizedLearningRate, weightRand: False
+

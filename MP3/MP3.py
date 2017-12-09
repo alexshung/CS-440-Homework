@@ -277,7 +277,7 @@ def runPart1():
 	(classToFeatures, correctHeur, bestWorstClassTracker) = runModel(inputNumbers, labels, testNumbers, testLabels, 0.1)
 
 	# oddsRatioMaker(classToFeatures)
-	# print(correctHeur)
+	print(correctHeur/len(testNumbers))
 	# printBestWorstForClass(fullTestFileName, bestWorstClassTracker)
 
 def runPart2():
@@ -313,12 +313,12 @@ if __name__ == "__main__":
 ###############
 #### PART 1 ###
 ###############
-	# runPart1()
+	runPart1()
 
 ###############
 #### PART 2 ###
 ###############
-	runPart2()
+#	runPart2()
 	
 
 
